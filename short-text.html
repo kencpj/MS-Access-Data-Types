@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Short Text Data Type</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f5f5;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+            padding-top: 100px;
+        }
+        
+        /* Navigation Bar Styles */
+        header {
+            background-color: #2c3e50;
+            width: 100%;
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 1000;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .navbar {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            max-width: 950px;
+            margin: 0 auto;
+            padding: 15px 30px;
+        }
+
+        .nav-links {
+            display: flex;
+            list-style: none;
+            gap: 40px;
+        }
+
+        .nav-links a {
+            color: #ecf0f1;
+            text-decoration: none;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: color 0.2s ease;
+        }
+
+        .nav-links a:hover, .nav-links a.active {
+            color: #bb86fc;
+        }
+
+        .container {
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            width: 100%;
+            max-width: 950px;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+            font-weight: 300;
+            text-align: center;
+        }
+
+        /* Formatted Storage Info Box matching number.html layout */
+        .storage-info {
+            margin-bottom: 25px;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #3498db; /* Blue specification layout preserved */
+        }
+        
+        .storage-info h2 {
+            color: #2c3e50;
+            margin-bottom: 12px;
+            font-size: 1.1rem;
+        }
+
+        .storage-grid {
+            display: grid;
+            grid-template-columns: minmax(140px, auto) 1fr;
+            row-gap: 8px;
+            column-gap: 15px;
+            align-items: baseline;
+        }
+        
+        .storage-grid .data-label {
+            font-weight: 700;
+            color: #34495e;
+            font-size: 0.9rem;
+            white-space: nowrap;
+        }
+
+        .storage-grid .data-desc {
+            color: #34495e;
+            font-size: 0.9rem;
+        }
+        
+        .bit-block-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 12px;
+            background: #fafbfc;
+            padding: 12px 16px;
+            border-radius: 8px;
+            border: 1px solid #eef2f3;
+            width: 100%;
+            gap: 20px;
+        }
+
+        .bit-row-left-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex-grow: 1;
+            position: relative;
+        }
+
+        .row-character-label {
+            position: absolute;
+            left: 0px;
+            top: 0px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: #3498db;
+            background-color: #eaf2f8;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+        
+        .bit-value-row {
+            display: flex;
+            justify-content: center;
+            width: 100%;
+            margin-bottom: 6px;
+            padding-left: 50px; /* Offset to clear the character label */
+        }
+        
+        .bit-value {
+            width: 42px; 
+            text-align: center;
+            position: relative;
+            font-weight: 600;
+            font-size: 0.7rem;
+            color: #7f8c8d;
+            white-space: nowrap;
+            cursor: help;
+        }
+        
+        .gap-nibble { margin-right: 14px; }
+        
+        .bit-value:hover .tooltip {
+            visibility: visible;
+            opacity: 1;
+        }
+        
+        .tooltip {
+            visibility: hidden;
+            width: max-content;
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            border-radius: 4px;
+            padding: 4px 8px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%; 
+            left: 50%;
+            transform: translateX(-50%);
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 0.8rem;
+            white-space: nowrap;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+        
+        .tooltip::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: #333 transparent transparent transparent;
+        }
+        
+        .byte-display {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            margin-top: 10px;
+            margin-bottom: 25px;
+        }
+        
+        .bit-row {
+            display: flex;
+            justify-content: center;
+            width: 100%;
+            padding-left: 50px; /* Offset to clear the character label */
+        }
+        
+        .bit-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 42px;
+        }
+        
+        .bit {
+            font-size: 1.8rem;
+            font-weight: bold;
+            width: 100%;
+            text-align: center;
+            border-radius: 6px;
+            padding: 6px 0;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            user-select: none;
+        }
+        
+        .bit:hover {
+            transform: translateY(-2px);
+            filter: brightness(1.1);
+        }
+        
+        /* Text Highlight Color Profiles (Reverted to Purple theme) */
+        .bit.bit-1 { background-color: #9b59b6; color: #ffffff; }
+        .bit.bit-0 { background-color: #eae6ee; color: #887d90; }
+
+        /* Integrated Row Displays Box on the Right side */
+        .row-displays-box {
+            display: flex;
+            gap: 8px;
+            min-width: 150px;
+            justify-content: flex-end;
+        }
+
+        .row-output-indicator {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: #f1f5f9;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            width: 70px;
+            height: 52px;
+        }
+
+        .row-output-label {
+            font-size: 0.65rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: #64748b;
+            margin-bottom: 2px;
+        }
+
+        .row-output-value {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #1e293b;
+        }
+
+        .row-output-value.ascii-val {
+            color: #9b59b6; /* Match ASCII text output to active bit colours */
+        }
+        
+        .control-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            margin-bottom: 25px;
+            background-color: #fcfdfd;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px dashed #cbd5e1;
+        }
+        
+        .preset-select {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .preset-select label { font-weight: 700; font-size: 1.1rem; color: #1e293b; }
+        .preset-select select, .prop-input {
+            padding: 8px 12px;
+            border: 2px solid #cbd5e1;
+            border-radius: 6px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: #334155;
+            background-color: white;
+        }
+        .prop-input { width: 80px; text-align: center; }
+        
+        .input-form-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            margin-top: 20px;
+            width: 100%;
+        }
+        
+        .input-label { font-size: 0.9rem; font-weight: 600; color: #7f8c8d; text-transform: uppercase; letter-spacing: 1px; }
+        .calc-input {
+            font-size: 1.6rem;
+            color: #2c3e50;
+            font-weight: 600;
+            text-align: center;
+            padding: 8px 16px;
+            border: 2px solid #bdc3c7;
+            border-radius: 8px;
+            width: 100%;
+            max-width: 600px;
+            background-color: #fbfcfc;
+            transition: all 0.2s ease;
+        }
+        .calc-input:focus { border-color: #9b59b6; background-color: white; outline: none; }
+        
+        .capacity-note {
+            font-size: 0.8rem;
+            color: #e74c3c;
+            font-weight: 600;
+            margin-top: -2px;
+        }
+
+        .info-text { margin-top: 20px; font-size: 0.9rem; color: #7f8c8d; text-align: center; line-height: 1.5; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <nav class="navbar">
+            <ul class="nav-links">
+                <li><a href="number.html">Number</a></li>
+                <li><a href="#" class="active">Short Text</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <div class="container">
+        <h1>Short Text</h1>
+        
+        <div class="storage-info">
+            <h2>Short Text Specification:</h2>
+            <div class="storage-grid">
+                <div class="data-label">Storage Layout:</div>
+                <div class="data-desc">Each text character requires exactly 1 byte (8 bits) of space under basic ASCII mapping templates.</div>
+                
+                <div class="data-label">Maximum Field Size:</div>
+                <div class="data-desc">Supports configurations up to 255 characters</div>
+            </div>
+        </div>
+
+        <div class="control-panel">
+            <div class="preset-select">
+                <label for="charLengthInput" id="fieldSizeLabel">Field Size (32 bits):</label>
+                <input type="number" id="charLengthInput" class="prop-input" min="1" max="25" value="4">
+                <div class="capacity-note">Note: For classroom demonstration purposes, the field size capacity is limited to a maximum of 25.</div>
+            </div>
+        </div>
+
+        <div class="byte-display" id="byteDisplay"></div>
+        
+        <div class="input-form-group">
+            <label class="input-label" for="textInput">Text Output String Value</label>
+            <input type="text" class="calc-input" id="textInput" value="">
+        </div>
+        
+        <div class="info-text">
+            Alter individual binary units to recalculate the string expression or type updates dynamically directly inside the text input box.
+        </div>
+    </div>
+
+    <script>
+        let maxCharacters = 4;
+        let characterDataArray = Array(maxCharacters).fill(0); // Holds numeric code metrics per row position
+        
+        const byteDisplay = document.getElementById('byteDisplay');
+        const textInput = document.getElementById('textInput');
+        const charLengthInput = document.getElementById('charLengthInput');
+        const fieldSizeLabel = document.getElementById('fieldSizeLabel');
+        
+        function formatLargeNumber(value) {
+            return value.toString();
+        }
+
+        function createTextBitLayouts() {
+            maxCharacters = Math.min(25, Math.max(1, parseInt(charLengthInput.value) || 4));
+            charLengthInput.value = maxCharacters;
+            
+            // Update the label with calculated bit count dynamically
+            const totalBits = maxCharacters * 8;
+            fieldSizeLabel.textContent = `Field Size (${totalBits} bits):`;
+            
+            // Set input hard-cap limit
+            textInput.maxLength = maxCharacters;
+
+            // Trim current values if text length currently exceeds the downsized restriction boundary
+            if (textInput.value.length > maxCharacters) {
+                textInput.value = textInput.value.substring(0, maxCharacters);
+            }
+
+            // Adjust storage array size while preserving existing character values if safe
+            let updatedArray = Array(maxCharacters).fill(0);
+            for(let i = 0; i < Math.min(maxCharacters, characterDataArray.length); i++) {
+                updatedArray[i] = characterDataArray[i];
+            }
+            characterDataArray = updatedArray;
+
+            byteDisplay.innerHTML = '';
+            
+            for (let charIdx = 0; charIdx < maxCharacters; charIdx++) {
+                const rowBlockDiv = document.createElement('div'); 
+                rowBlockDiv.className = 'bit-block-row';
+                rowBlockDiv.dataset.charRowIndex = charIdx;
+
+                // Left wrapper block for bits metrics hierarchy
+                const leftContentDiv = document.createElement('div');
+                leftContentDiv.className = 'bit-row-left-content';
+
+                // Track indices via label tags
+                const labelSpan = document.createElement('span');
+                labelSpan.className = 'row-character-label';
+                labelSpan.textContent = `Char ${charIdx + 1}`;
+                leftContentDiv.appendChild(labelSpan);
+
+                const valueRowDiv = document.createElement('div'); 
+                valueRowDiv.className = 'bit-value-row';
+                
+                // Add standard positional base weights down from bit 7 to 0
+                for (let b = 7; b >= 0; b--) {
+                    const valueSpan = document.createElement('span');
+                    valueSpan.className = 'bit-value';
+                    valueSpan.textContent = formatLargeNumber(2 ** b);
+                    
+                    const tooltip = document.createElement('div');
+                    tooltip.className = 'tooltip';
+                    tooltip.textContent = `Row ${charIdx + 1}, Bit ${b} (Weight: ${2 ** b})`;
+                    valueSpan.appendChild(tooltip);
+                    
+                    if (b === 4) valueSpan.classList.add('gap-nibble');
+                    valueRowDiv.appendChild(valueSpan);
+                }
+                leftContentDiv.appendChild(valueRowDiv);
+
+                const bitRowDiv = document.createElement('div'); 
+                bitRowDiv.className = 'bit-row';
+                
+                for (let b = 7; b >= 0; b--) {
+                    const bitContainer = document.createElement('div'); 
+                    bitContainer.className = 'bit-container';
+                    if (b === 4) bitContainer.classList.add('gap-nibble');
+                    
+                    const bit = document.createElement('span');
+                    bit.className = 'bit bit-0'; 
+                    bit.textContent = '0';
+                    bit.dataset.charIdx = charIdx; 
+                    bit.dataset.bitPower = b;
+                    
+                    bitContainer.appendChild(bit);
+                    bitRowDiv.appendChild(bitContainer);
+                }
+                leftContentDiv.appendChild(bitRowDiv);
+                rowBlockDiv.appendChild(leftContentDiv);
+
+                // Right wrapper block for integrated Row Indicators (Dec and ASCII)
+                const displaysBox = document.createElement('div');
+                displaysBox.className = 'row-displays-box';
+
+                // Decimal output frame element
+                const decFrame = document.createElement('div');
+                decFrame.className = 'row-output-indicator';
+                decFrame.innerHTML = `
+                    <span class="row-output-label">DEC</span>
+                    <span class="row-output-value dec-display-element" id="decVal-${charIdx}">0</span>
+                `;
+                displaysBox.appendChild(decFrame);
+
+                // ASCII output frame element
+                const asciiFrame = document.createElement('div');
+                asciiFrame.className = 'row-output-indicator';
+                asciiFrame.innerHTML = `
+                    <span class="row-output-label">ASCII</span>
+                    <span class="row-output-value ascii-display-element ascii-val" id="asciiVal-${charIdx}">&nbsp;</span>
+                `;
+                displaysBox.appendChild(asciiFrame);
+
+                rowBlockDiv.appendChild(displaysBox);
+                byteDisplay.appendChild(rowBlockDiv);
+            }
+        }
+        
+        function updateDisplay() {
+            let compiledStringOutput = "";
+            const bitElements = byteDisplay.querySelectorAll('.bit');
+            
+            // Sync background binary structures to the target element text node loops
+            bitElements.forEach((bit) => {
+                const charIdx = parseInt(bit.dataset.charIdx);
+                const bitPower = parseInt(bit.dataset.bitPower);
+                const bitStateValue = (characterDataArray[charIdx] >> bitPower) & 1;
+                
+                bit.textContent = bitStateValue;
+                bit.className = `bit bit-${bitStateValue}`;
+            });
+
+            // Update row inline dec/ascii boxes and compile absolute string block
+            for (let i = 0; i < maxCharacters; i++) {
+                let codeValue = characterDataArray[i];
+                
+                const decOutputNode = document.getElementById(`decVal-${i}`);
+                const asciiOutputNode = document.getElementById(`asciiVal-${i}`);
+                
+                if (decOutputNode) decOutputNode.textContent = codeValue;
+
+                let charSymbol = "";
+                if (codeValue === 0) {
+                    charSymbol = "";
+                    if (asciiOutputNode) asciiOutputNode.innerHTML = `&nbsp;`;
+                } else if ((codeValue >= 32 && codeValue <= 126) || (codeValue >= 161 && codeValue <= 255)) {
+                    charSymbol = String.fromCharCode(codeValue);
+                    if (asciiOutputNode) asciiOutputNode.textContent = charSymbol;
+                } else {
+                    charSymbol = ""; // Don't crash string on unprintable control characters
+                    if (asciiOutputNode) asciiOutputNode.textContent = "•"; 
+                }
+
+                compiledStringOutput += charSymbol;
+            }
+            
+            if (document.activeElement !== textInput) {
+                textInput.value = compiledStringOutput;
+            }
+        }
+        
+        function toggleBitElement(bitElement) {
+            const charIdx = parseInt(bitElement.dataset.charIdx);
+            const bitPower = parseInt(bitElement.dataset.bitPower);
+            
+            // Bitwise XOR flip state execution
+            characterDataArray[charIdx] ^= (1 << bitPower);
+            updateDisplay();
+        }
+        
+        // Input sync event handler matching interactive spreadsheet interfaces (MS Access style)
+        textInput.addEventListener('input', (e) => {
+            let textValue = e.target.value;
+            
+            // Clear current storage values
+            characterDataArray.fill(0);
+            
+            // Map character values up to the max constraint layout boundary limit
+            for (let i = 0; i < Math.min(textValue.length, maxCharacters); i++) {
+                characterDataArray[i] = textValue.charCodeAt(i) & 0xFF; // Bound cleanly within 1 byte limits
+            }
+            updateDisplay();
+        });
+
+        charLengthInput.addEventListener('change', () => {
+            let requestedVal = parseInt(charLengthInput.value) || 4;
+            if (requestedVal > 25) requestedVal = 25;
+            if (requestedVal < 1) requestedVal = 1;
+            charLengthInput.value = requestedVal;
+            
+            createTextBitLayouts();
+            updateDisplay();
+        });
+
+        byteDisplay.addEventListener('click', (e) => {
+            if (e.target.classList.contains('bit')) {
+                toggleBitElement(e.target);
+            }
+        });
+
+        // Initialize display context elements securely at runtime
+        createTextBitLayouts();
+        updateDisplay();
+    </script>
+</body>
+</html>
