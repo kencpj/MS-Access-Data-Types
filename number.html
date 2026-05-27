@@ -45,7 +45,7 @@
         .nav-links {
             display: flex;
             list-style: none;
-            gap: 40px; /* Generous spacing since there are only two items */
+            gap: 40px;
         }
 
         .nav-links a {
@@ -320,9 +320,11 @@
             gap: 8px;
             margin-top: 20px;
             width: 100%;
+            position: relative;
         }
         
         .input-label { font-size: 0.9rem; font-weight: 600; color: #7f8c8d; text-transform: uppercase; letter-spacing: 1px; }
+        
         .calc-input {
             font-size: 1.6rem;
             color: #2c3e50;
@@ -332,11 +334,49 @@
             border: 2px solid #bdc3c7;
             border-radius: 8px;
             width: 100%;
-            max-width: 500px;
+            max-width: 650px;
             background-color: #fbfcfc;
             transition: all 0.2s ease;
         }
         .calc-input:focus { border-color: #3498db; background-color: white; outline: none; }
+        
+        /* Floating Scientific Notation Tooltip for Floating Points */
+        .input-form-group .input-tooltip {
+            visibility: hidden;
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 6px 12px;
+            position: absolute;
+            z-index: 10;
+            bottom: 105%;
+            left: 50%;
+            transform: translateX(-50%);
+            opacity: 0;
+            transition: opacity 0.2s;
+            font-size: 0.9rem;
+            font-weight: 600;
+            white-space: nowrap;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        
+        .input-form-group:hover .input-tooltip.active {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        .input-form-group .input-tooltip::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -6px;
+            border-width: 6px;
+            border-style: solid;
+            border-color: #333 transparent transparent transparent;
+        }
+
         .info-text { margin-top: 20px; font-size: 0.9rem; color: #7f8c8d; text-align: center; line-height: 1.5; }
     </style>
 </head>
@@ -413,7 +453,8 @@
             <div class="legend-item" id="legend3"></div>
         </div>
         
-        <div class="input-form-group">
+        <div class="input-form-group" id="inputContainer">
+            <div class="input-tooltip" id="notationTooltip">Scientific Form: 0</div>
             <label class="input-label" for="decimalInput">Decimal Value</label>
             <input type="text" class="calc-input" id="decimalInput" value="0">
         </div>
@@ -435,12 +476,13 @@
         const legend1 = document.getElementById('legend1');
         const legend2 = document.getElementById('legend2');
         const legend3 = document.getElementById('legend3');
-        const decimalInput = document.getElementById('decimalInput');
+        const notationTooltip = document.getElementById('notationTooltip');
         const presetSelect = document.getElementById('presetSelect');
         const fieldSizeLabel = document.getElementById('fieldSizeLabel');
         const decimalProps = document.getElementById('decimalProps');
         const decPrecisionInput = document.getElementById('decPrecision');
         const decScaleInput = document.getElementById('decScale');
+        let decimalInput = document.getElementById('decimalInput');
         
         const presets = {
             byte: { bits: 8, signed: false },
@@ -458,26 +500,67 @@
             return value.toString();
         }
 
+        // Expanded exact string generation helper for huge floating point digits
+        function formatFloatFullDigits(num) {
+            if (Number.isNaN(num)) return "NaN";
+            if (!Number.isFinite(num)) return num.toString();
+            
+            let str = num.toString();
+            if (!str.includes('e')) return str;
+            
+            let [mantissa, exponent] = str.split('e');
+            let exp = parseInt(exponent);
+            let sign = mantissa.startsWith('-') ? '-' : '';
+            let absoluteMantissa = mantissa.replace('-', '').replace('.', '');
+            
+            if (exp < 0) {
+                let leadingZeros = '0.' + '0'.repeat(Math.abs(exp) - 1);
+                return sign + leadingZeros + absoluteMantissa;
+            } else {
+                let dotIndex = mantissa.replace('-', '').indexOf('.');
+                if (dotIndex < 0) dotIndex = absoluteMantissa.length;
+                let trailingZerosNeeded = exp - (absoluteMantissa.length - dotIndex);
+                
+                if (trailingZerosNeeded >= 0) {
+                    return sign + absoluteMantissa + '0'.repeat(trailingZerosNeeded);
+                } else {
+                    let cutPos = dotIndex + exp;
+                    return sign + absoluteMantissa.slice(0, cutPos) + '.' + absoluteMantissa.slice(cutPos);
+                }
+            }
+        }
+
         function getBitsNeededForPrecision() {
             let p = parseInt(decPrecisionInput.value) || 18;
             let maxVal = 10n ** BigInt(p) - 1n;
             return maxVal.toString(2).length;
         }
 
-        function getComputedDisplayValue() {
+        function getComputedDisplayValue(returnScientific = false) {
             if (activePreset === 'decimal') {
                 let s = parseInt(decScaleInput.value) || 0;
-                let dataPattern = currentValue & ~0x800000000000000000000000n; // Mask away manual bit 95 sign track securely
+                let dataPattern = currentValue & ~0x800000000000000000000000n;
                 
-                if (dataPattern === 0n) return (isNegative ? "-" : "") + "0" + (s > 0 ? "." + "0".repeat(s) : "");
+                if (dataPattern === 0n) {
+                    let zeroBase = "0" + (s > 0 ? "." + "0".repeat(s) : "");
+                    let signedZero = (isNegative ? "-" : "") + zeroBase;
+                    if (returnScientific) return Number(signedZero).toExponential();
+                    return signedZero;
+                }
                 
                 let rawDigits = dataPattern.toString();
-                if (s === 0) return (isNegative ? "-" : "") + rawDigits;
+                if (s === 0) {
+                    let outStr = (isNegative ? "-" : "") + rawDigits;
+                    if (returnScientific) return Number(outStr).toExponential();
+                    return outStr;
+                }
                 
                 if (rawDigits.length <= s) {
                     rawDigits = rawDigits.padStart(s + 1, '0');
                 }
-                return (isNegative ? "-" : "") + rawDigits.slice(0, -s) + '.' + rawDigits.slice(-s);
+                let outStr = (isNegative ? "-" : "") + rawDigits.slice(0, -s) + '.' + rawDigits.slice(-s);
+                if (returnScientific) return Number(outStr).toExponential();
+                return outStr;
             }
 
             const maxVal = (1n << BigInt(bitCount)) - 1n;
@@ -486,12 +569,18 @@
             
             if (activePreset === 'single') {
                 let buffer = new ArrayBuffer(4); let view = new DataView(buffer);
-                view.setUint32(0, parseInt(binStr, 2), false); return view.getFloat32(0, false);
+                view.setUint32(0, parseInt(binStr, 2), false); 
+                let fVal = view.getFloat32(0, false);
+                if (returnScientific) return fVal.toExponential();
+                return formatFloatFullDigits(fVal);
             }
             if (activePreset === 'double') {
                 let buffer = new ArrayBuffer(8); let view = new DataView(buffer);
                 view.setUint32(0, parseInt(binStr.slice(0, 32), 2), false);
-                view.setUint32(4, parseInt(binStr.slice(32), 2), false); return view.getFloat64(0, false);
+                view.setUint32(4, parseInt(binStr.slice(32), 2), false); 
+                let dVal = view.getFloat64(0, false);
+                if (returnScientific) return dVal.toExponential();
+                return formatFloatFullDigits(dVal);
             }
             if (isSignedMode) {
                 const signBitMask = 1n << BigInt(bitCount - 1);
@@ -524,13 +613,12 @@
                 let fragPart = parts[1] || "";
                 
                 if (fragPart.length > s) {
-                    // Check next digit layout to handle standard rounding
                     let nextDigit = parseInt(fragPart[s]);
                     fragPart = fragPart.slice(0, s);
                     if (nextDigit >= 5) {
                         let tempFrag = BigInt(fragPart) + 1n;
                         fragPart = tempFrag.toString().padStart(s, '0');
-                        if (fragPart.length > s) { // Bubble up over-clipping digit to the whole number block securely
+                        if (fragPart.length > s) { 
                             intPart = (BigInt(intPart) + 1n).toString();
                             fragPart = fragPart.slice(1);
                         }
@@ -620,11 +708,21 @@
                 chunkData.forEach((item, idx) => {
                     const valueSpan = document.createElement('span');
                     valueSpan.className = 'bit-value';
-                    valueSpan.textContent = formatLargeNumber(item.weight);
+                    
+                    // Adjustment 1: Omit weights completely only for Single and Double profiles
+                    if (['single', 'double'].includes(activePreset)) {
+                        valueSpan.textContent = item.actualBitIndex;
+                    } else {
+                        valueSpan.textContent = formatLargeNumber(item.weight);
+                    }
                     
                     const tooltip = document.createElement('div');
                     tooltip.className = 'tooltip';
-                    tooltip.textContent = "Bit " + item.actualBitIndex + " (Weight: " + item.weight.toString() + ")";
+                    if (['single', 'double'].includes(activePreset)) {
+                        tooltip.textContent = `Bit index position: ${item.actualBitIndex}`;
+                    } else {
+                        tooltip.textContent = "Bit " + item.actualBitIndex + " (Weight: " + item.weight.toString() + ")";
+                    }
                     valueSpan.appendChild(tooltip);
                     
                     if (item.actualBitIndex > 0 && idx !== chunkData.length - 1) {
@@ -664,8 +762,6 @@
             
             if (activePreset === 'decimal') {
                 isNegative = (currentValue & 0x800000000000000000000000n) !== 0n;
-                
-                // Enforce strict runtime clipping even on structural bit manipulation actions
                 let coreValue = currentValue & ~0x800000000000000000000000n;
                 let clampedCore = clampDecimalValue(coreValue);
                 if (clampedCore !== coreValue) {
@@ -697,7 +793,6 @@
                     return;
                 }
 
-                // Reinstated Original Modular Layout Color Mapping Overrides securely
                 if (activePreset === 'single') {
                     if (bitIdx === 31) bit.classList.add('field-sign');
                     else if (bitIdx >= 23 && bitIdx <= 30) bit.classList.add('field-exponent');
@@ -711,7 +806,15 @@
                 }
             });
             
-            const displayValue = getComputedDisplayValue();
+            // Adjustment 2: Update tooltip content dynamically with scientific format for floats/decimals
+            if (['single', 'double', 'decimal'].includes(activePreset)) {
+                notationTooltip.textContent = `Scientific Form: ${getComputedDisplayValue(true)}`;
+                notationTooltip.classList.add('active');
+            } else {
+                notationTooltip.classList.remove('active');
+            }
+
+            const displayValue = getComputedDisplayValue(false);
             if (document.activeElement !== decimalInput) {
                 decimalInput.value = displayValue.toString();
             }
@@ -723,6 +826,49 @@
             updateDisplay();
         }
         
+        // Dynamic field type shifting handler mapping
+        function setupInputFieldType(presetName) {
+            const container = document.getElementById('inputContainer');
+            const oldInput = document.getElementById('decimalInput');
+            const savedValue = oldInput.value;
+            
+            // Build temporary replica instance with adjusted layout configuration attributes
+            const newInput = document.createElement('input');
+            newInput.id = 'decimalInput';
+            
+            // Adjustment 3: Convert text box to explicit spinner numeric step interface for pure integer blocks
+            if (['byte', 'integer', 'long'].includes(presetName)) {
+                newInput.type = 'number';
+                if (presetName === 'byte') { newInput.min = 0; newInput.max = 255; }
+                if (presetName === 'integer') { newInput.min = -32768; newInput.max = 32767; }
+                if (presetName === 'long') { newInput.min = -2147483648; newInput.max = 2147483647; }
+            } else {
+                newInput.type = 'text';
+            }
+            
+            newInput.className = 'calc-input';
+            newInput.value = savedValue;
+            
+            // Swap reference objects seamlessly inside the DOM ecosystem space safely
+            container.replaceChild(newInput, oldInput);
+            decimalInput = newInput;
+            
+            // Re-bind native pipeline event listeners instantly onto the fresh target handle
+            decimalInput.addEventListener('input', (e) => {
+                let val = e.target.value.trim();
+                if (val === "" || val === "-") {
+                    isNegative = val.startsWith('-');
+                    return;
+                }
+                setPatternFromDecimal(val);
+                updateDisplay();
+            });
+            
+            decimalInput.addEventListener('blur', () => { 
+                decimalInput.value = getComputedDisplayValue(false).toString(); 
+            });
+        }
+        
         function applyPreset(presetName) {
             if (presets[presetName]) {
                 activePreset = presetName;
@@ -730,6 +876,8 @@
                 isSignedMode = presets[presetName].signed;
                 currentValue = 0n;
                 isNegative = false;
+                
+                setupInputFieldType(presetName);
                 createBitDisplays();
                 updateDisplay();
             }
@@ -740,7 +888,7 @@
             if (activePreset === 'decimal') {
                 let p = parseInt(decPrecisionInput.value) || 18;
                 let maxAllowed = 10n ** BigInt(p) - 1n;
-                currentValue = maxAllowed; // Cap perfectly within bounds instead of flooding system bits out
+                currentValue = maxAllowed; 
             } else {
                 currentValue = (1n << BigInt(bitCount)) - 1n; 
             }
@@ -752,16 +900,6 @@
             if (e.target.classList.contains('bit')) {
                 toggleBit(parseInt(e.target.dataset.index));
             }
-        });
-        
-        decimalInput.addEventListener('input', (e) => {
-            let val = e.target.value.trim();
-            if (val === "" || val === "-") {
-                isNegative = val.startsWith('-');
-                return;
-            }
-            setPatternFromDecimal(val);
-            updateDisplay();
         });
 
         decPrecisionInput.addEventListener('change', () => {
@@ -777,8 +915,6 @@
             decScaleInput.value = Math.min(p, Math.max(0, parseInt(decScaleInput.value) || 0));
             updateDisplay();
         });
-
-        decimalInput.addEventListener('blur', () => { decimalInput.value = getComputedDisplayValue().toString(); });
         
         presetSelect.addEventListener('change', (e) => {
             if (e.target.value) applyPreset(e.target.value);
