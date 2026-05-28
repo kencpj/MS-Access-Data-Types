@@ -392,10 +392,10 @@
     </header>
 
     <div class="container">
-        <h1>Number Data Type</h1>
+        <h1>Number</h1>
         
         <div class="storage-info">
-            <h2>Number Field Sizes:</h2>
+            <h2>Number Data Types:</h2>
             <div class="storage-grid">
                 <div class="data-label">Byte:</div>
                 <div class="data-desc">1 byte (8 bits) - Stores values from 0 to 255</div>
@@ -407,13 +407,13 @@
                 <div class="data-desc">4 bytes (32 bits) - Stores values from -2,147,483,648 to 2,147,483,647</div>
                 
                 <div class="data-label">Single:</div>
-                <div class="data-desc">4 bytes (32 bits) - Stores values from -3.403e+38 to 3.403e+38 (~7 decimal digits precision)</div>
+                <div class="data-desc">4 bytes (32 bits) - Stores values from -3.402823e+38 to -1.401298e-45 and 1.401298e-45 to 3.402823e+38 (~7 decimal digits precision)</div>
                 
                 <div class="data-label">Double:</div>
-                <div class="data-desc">8 bytes (64 bits) - Stores values from -1.798e+308 to 1.798e+308 (~15 decimal digits precision)</div>
+                <div class="data-desc">8 bytes (64 bits) - Stores values from -1.7976931348623157e+308 to -4.9406564584124654e-324 and 4.9406564584124654e-324 to 1.7976931348623157e+308 (~15 decimal digits precision)</div>
                 
                 <div class="data-label">Decimal:</div>
-                <div class="data-desc">12 bytes (128 bits) - Stores values with up to 28 significant digits (High decimal digits precision)</div>
+                <div class="data-desc">12 bytes (128 bits) - Stores values with up to 28 significant digits (High precision decimal type)</div>
             </div>
         </div>
 
@@ -500,7 +500,6 @@
             return value.toString();
         }
 
-        // Expanded exact string generation helper for huge floating point digits
         function formatFloatFullDigits(num) {
             if (Number.isNaN(num)) return "NaN";
             if (!Number.isFinite(num)) return num.toString();
@@ -571,7 +570,11 @@
                 let buffer = new ArrayBuffer(4); let view = new DataView(buffer);
                 view.setUint32(0, parseInt(binStr, 2), false); 
                 let fVal = view.getFloat32(0, false);
-                if (returnScientific) return fVal.toExponential();
+                if (returnScientific) {
+                    // Precision bounds logic to exactly target 7 significant figures
+                    if (!Number.isFinite(fVal) || Number.isNaN(fVal)) return fVal.toString();
+                    return fVal.toExponential(6);
+                }
                 return formatFloatFullDigits(fVal);
             }
             if (activePreset === 'double') {
@@ -579,7 +582,11 @@
                 view.setUint32(0, parseInt(binStr.slice(0, 32), 2), false);
                 view.setUint32(4, parseInt(binStr.slice(32), 2), false); 
                 let dVal = view.getFloat64(0, false);
-                if (returnScientific) return dVal.toExponential();
+                if (returnScientific) {
+                    // Precision bounds logic to exactly target 15 significant figures
+                    if (!Number.isFinite(dVal) || Number.isNaN(dVal)) return dVal.toString();
+                    return dVal.toExponential(14);
+                }
                 return formatFloatFullDigits(dVal);
             }
             if (isSignedMode) {
@@ -709,7 +716,6 @@
                     const valueSpan = document.createElement('span');
                     valueSpan.className = 'bit-value';
                     
-                    // Adjustment 1: Omit weights completely only for Single and Double profiles
                     if (['single', 'double'].includes(activePreset)) {
                         valueSpan.textContent = item.actualBitIndex;
                     } else {
@@ -806,7 +812,6 @@
                 }
             });
             
-            // Adjustment 2: Update tooltip content dynamically with scientific format for floats/decimals
             if (['single', 'double', 'decimal'].includes(activePreset)) {
                 notationTooltip.textContent = `Scientific Form: ${getComputedDisplayValue(true)}`;
                 notationTooltip.classList.add('active');
@@ -826,17 +831,14 @@
             updateDisplay();
         }
         
-        // Dynamic field type shifting handler mapping
         function setupInputFieldType(presetName) {
             const container = document.getElementById('inputContainer');
             const oldInput = document.getElementById('decimalInput');
             const savedValue = oldInput.value;
             
-            // Build temporary replica instance with adjusted layout configuration attributes
             const newInput = document.createElement('input');
             newInput.id = 'decimalInput';
             
-            // Adjustment 3: Convert text box to explicit spinner numeric step interface for pure integer blocks
             if (['byte', 'integer', 'long'].includes(presetName)) {
                 newInput.type = 'number';
                 if (presetName === 'byte') { newInput.min = 0; newInput.max = 255; }
@@ -849,11 +851,9 @@
             newInput.className = 'calc-input';
             newInput.value = savedValue;
             
-            // Swap reference objects seamlessly inside the DOM ecosystem space safely
             container.replaceChild(newInput, oldInput);
             decimalInput = newInput;
             
-            // Re-bind native pipeline event listeners instantly onto the fresh target handle
             decimalInput.addEventListener('input', (e) => {
                 let val = e.target.value.trim();
                 if (val === "" || val === "-") {
